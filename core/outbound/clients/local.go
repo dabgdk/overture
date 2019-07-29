@@ -47,6 +47,18 @@ func (c *LocalClient) Exchange() *dns.Msg {
 	return nil
 }
 
+func (c *LocalClient) BlackholeExchange() *dns.Msg {
+	if c.blackholeIP() {
+		if c.responseMessage != nil {
+			common.SetMinimumTTL(c.responseMessage, uint32(c.minimumTTL))
+			common.SetTTLByMap(c.responseMessage, c.domainTTLMap)
+		}
+		return c.responseMessage
+	}
+
+	return nil
+}
+
 func (c *LocalClient) exchangeFromHosts() bool {
 	if c.hosts == nil {
 		return false
@@ -75,6 +87,19 @@ func (c *LocalClient) exchangeFromHosts() bool {
 		if c.responseMessage != nil {
 			return true
 		}
+	}
+
+	return false
+}
+
+func (c *LocalClient) blackholeIP() bool {
+	//name := c.rawName[:len(c.rawName)-1]
+    // Converts string to 'IP' type
+	ip := net.ParseIP("127.0.0.1")
+    if ip.To4() != nil && c.questionMessage.Question[0].Qtype == dns.TypeA {
+		a, _ := dns.NewRR(c.rawName + " IN A " + ip.String())
+		c.setLocalResponseMessage([]dns.RR{a})
+		return true
 	}
 
 	return false

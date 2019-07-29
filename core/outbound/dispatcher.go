@@ -38,10 +38,20 @@ func (d *Dispatcher) Exchange(query *dns.Msg, inboundIP string) *dns.Msg {
 	var ActiveClientBundle *clients.RemoteClientBundle
 
 	localClient := clients.NewLocalClient(query, d.Hosts, d.MinimumTTL, d.DomainTTLMap)
-	resp := localClient.Exchange()
-	if resp != nil {
+	// Suspect this is where the cache lookup process begins; looks like multiple functions are used depending on client being local or remote
+    resp := localClient.Exchange()
+	// If memory serves correctly, resp will be nil if there was a cache miss
+    if resp != nil {
 		return resp
-	}
+        // else a cache miss occurred, and if the external script returns REJECT, return ... a blackhole response?
+	} else if true {
+    
+        // Form and return blackhole response
+        resp2 := localClient.BlackholeExchange()
+        if resp2 != nil {
+            return resp2
+        }
+    }
 
 	for _, cb := range []*clients.RemoteClientBundle{PrimaryClientBundle, AlternativeClientBundle} {
 		resp := cb.ExchangeFromCache()
@@ -91,7 +101,7 @@ func (d *Dispatcher) isSelectDomain(rcb *clients.RemoteClientBundle, dt matcher.
 				"question": qn,
 				"domain":   qn,
 			}).Debug("Matched")
-			log.Debug("Finally use " + rcb.Name + " DNS")
+			log.Debugf("Finally use %s DNS", rcb.Name)
 			return true
 		}
 
