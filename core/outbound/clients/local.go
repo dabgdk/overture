@@ -105,6 +105,10 @@ func (c *LocalClient) blackholeIP() bool {
 	return false
 }
 
+func (c *LocalClient) GetQueryName(*dns.Msg) string {
+    return c.rawName[:len(c.rawName)-1]
+}
+
 func (c *LocalClient) exchangeFromIP() bool {
 	name := c.rawName[:len(c.rawName)-1]
 	ip := net.ParseIP(name)

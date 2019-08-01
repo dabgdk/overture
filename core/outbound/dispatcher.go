@@ -2,6 +2,9 @@ package outbound
 
 import (
 	"net"
+    "os/exec"
+    "strings"
+    "fmt"
 
 	"github.com/miekg/dns"
 	log "github.com/sirupsen/logrus"
@@ -32,6 +35,20 @@ type Dispatcher struct {
 	Cache *cache.Cache
 }
 
+func (d *Dispatcher) QueryRejected (ipAddr string, name string) bool {
+        // Here we execute external script; must get a return value
+        out, err := exec.Command("helperScript.bat", name).Output()
+        if err != nil {
+            fmt.Printf("%s", err)
+        }
+        output := string(out[:])
+        if strings.Contains(output, "REJECT") {
+            return true
+        } else {
+            return false
+        }
+    }
+
 func (d *Dispatcher) Exchange(query *dns.Msg, inboundIP string) *dns.Msg {
 	PrimaryClientBundle := clients.NewClientBundle(query, d.PrimaryDNS, inboundIP, d.MinimumTTL, d.Cache, "Primary", d.DomainTTLMap)
 	AlternativeClientBundle := clients.NewClientBundle(query, d.AlternativeDNS, inboundIP, d.MinimumTTL, d.Cache, "Alternative", d.DomainTTLMap)
@@ -44,7 +61,7 @@ func (d *Dispatcher) Exchange(query *dns.Msg, inboundIP string) *dns.Msg {
     if resp != nil {
 		return resp
         // else a cache miss occurred, and if the external script returns REJECT, return ... a blackhole response?
-	} else if true {
+	} else if d.QueryRejected(inboundIP, localClient.GetQueryName(query)) {
     
         // Form and return blackhole response
         resp2 := localClient.BlackholeExchange()
